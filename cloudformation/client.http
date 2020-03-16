@@ -1,4 +1,4 @@
-GET http://3.8.137.93:8080/response
+GET http:// 35.178.176.34:8080/response
 Accept: application/json
 
 ###
