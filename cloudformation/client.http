@@ -1,4 +1,9 @@
-GET http:// 35.178.176.34:8080/response
+GET http://3.10.215.79:8080/response
+Accept: application/json
+
+###
+
+GET cf-fa-Publi-1G7AF0DO5PE7D-20279122.eu-west-2.elb.amazonaws.com:8080/response
 Accept: application/json
 
 ###
