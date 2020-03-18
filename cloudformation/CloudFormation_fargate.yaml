@@ -20,6 +20,19 @@ Parameters:
     Description: A path on the public load balancer that this service
       should be connected to. Use * to send all load balancer
       traffic to this service.
+  HealthCheckPath:
+    Type: String
+    Default: '/actuator/health'
+    Description: Endpoint exposed by the service the load balancer should be hitting
+      for health check.
+  HealthCheckTimeout:
+    Type: Number
+    Default: 45
+    Description: ALB healthcheck timeout in seconds; has to be smaller than HealthCheckInterval.
+  HealthCheckInterval:
+    Type: Number
+    Default: 60
+    Description: Interval in seconds between ALB healthcheck requests; has to be larger than HealthCheckTimeout.
   Priority:
     Type: Number
     Default: 1
@@ -213,10 +226,10 @@ Resources:
   DummyTargetGroupPublic:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /
+      HealthCheckIntervalSeconds: !Ref 'HealthCheckInterval'
+      HealthCheckPath: !Ref 'HealthCheckPath'
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckTimeoutSeconds: !Ref 'HealthCheckTimeout'
       HealthyThresholdCount: 2
       Name: !Join ['-', [!Ref 'AWS::StackName', 'drop-1']]
       Port: !Ref 'ContainerPort'
@@ -243,10 +256,10 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckIntervalSeconds: 6
-      HealthCheckPath: /
+      HealthCheckIntervalSeconds: !Ref 'HealthCheckInterval'
+      HealthCheckPath: !Ref 'HealthCheckPath'
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckTimeoutSeconds: !Ref 'HealthCheckTimeout'
       HealthyThresholdCount: 2
       TargetType: ip
       Name: !Ref 'ServiceName'
@@ -294,6 +307,7 @@ Resources:
                   - 'ecr:BatchGetImage'
 
                   # Allow the ECS tasks to upload logs to CloudWatch
+                  - "logs:CreateLogGroup"
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource: '*'
@@ -336,6 +350,11 @@ Resources:
                   - 'elasticloadbalancing:Describe*'
                   - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
                   - 'elasticloadbalancing:RegisterTargets'
+
+                  # Allow the ECS tasks to upload logs to CloudWatch (added by me, not in the original examples)
+                  - "logs:CreateLogGroup"
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
                 Resource: '*'
 
   InstanceSecurityGroup:
