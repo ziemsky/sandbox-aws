@@ -12,12 +12,12 @@ Accept: application/json
 
 ###
 
-GET cf-fa-Publi-RO4UU8PFFFQI-1378699209.eu-west-2.elb.amazonaws.com:8080/response
+GET {{albUrl}}:8080/response
 Accept: application/json
 
 ###
 
-GET cf-fa-Publi-RO4UU8PFFFQI-1378699209.eu-west-2.elb.amazonaws.com:8080/actuator/health
+GET {{albUrl}}:8080/actuator/health
 Accept: application/json
 
 ###

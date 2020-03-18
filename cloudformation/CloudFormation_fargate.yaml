@@ -82,6 +82,13 @@ Resources:
           Image: '121431078109.dkr.ecr.eu-west-2.amazonaws.com/aws-training-ecs:latest'
           PortMappings:
             - ContainerPort: !Ref 'ContainerPort'
+          LogConfiguration:
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-group: '/ecs/${StackName}'
+              awslogs-create-group: true
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: '${StackName}'
 
   Service:
     Type: AWS::ECS::Service
