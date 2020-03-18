@@ -67,6 +67,7 @@ Resources:
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
+    DependsOn: ServiceLogGroup
     Properties:
       Family: !Ref 'ServiceName'
       Cpu: !Ref 'ContainerCpu'
@@ -85,10 +86,16 @@ Resources:
           LogConfiguration:
             LogDriver: 'awslogs'
             Options:
-              awslogs-group: '/ecs/${StackName}'
-              awslogs-create-group: true
+              awslogs-group: !Ref ServiceLogGroup
+              #awslogs-create-group: false
               awslogs-region: !Ref 'AWS::Region'
-              awslogs-stream-prefix: '${StackName}'
+              awslogs-stream-prefix: !Ref StackName
+
+  ServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/ecs/cf-fargate"
+      RetentionInDays: 3
 
   Service:
     Type: AWS::ECS::Service
@@ -379,6 +386,15 @@ Resources:
           Value: My CF Fargate Security Group
 
 Outputs:
-  SecurityGroupId:
+  InstanceSecurityGroupId:
     Description: Security Group Id
     Value: !Ref InstanceSecurityGroup
+  LoadBalancerUrl:
+    Description: Public Load Balancer's URL
+    Value: !GetAtt PublicLoadBalancer.DNSName
+#  LoadBalancerSecurityGroups:
+#    Description: Public Load Balancer's Security Groups
+#    Value: !Join [ ', ', [ !GetAtt PublicLoadBalancer.SecurityGroups ] ]
+  LoadBalancerFullName:
+    Description: Public Load Balancer's full name
+    Value: !GetAtt PublicLoadBalancer.LoadBalancerFullName
