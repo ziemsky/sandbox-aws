@@ -116,8 +116,8 @@ Resources:
             - !Ref 'InstanceSecurityGroup'
             - !Ref 'FargateContainerSecurityGroup'
           Subnets:
-            - !Ref 'PublicSubnetOne'
-            - !Ref 'PublicSubnetTwo'
+            - !Ref 'PublicSubnetA1'
+            - !Ref 'PublicSubnetB1'
       TaskDefinition: !Ref 'TaskDefinition'
       LoadBalancers:
         - ContainerName: !Ref 'ServiceName'
@@ -131,7 +131,7 @@ Resources:
       EnableDnsHostnames: true
       CidrBlock: '10.0.0.0/16'
 
-  PublicSubnetOne:
+  PublicSubnetA1:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -141,7 +141,7 @@ Resources:
       VpcId: !Ref 'VPC'
       CidrBlock: '10.0.0.0/24'
       MapPublicIpOnLaunch: true
-  PublicSubnetTwo:
+  PublicSubnetB1:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -175,15 +175,15 @@ Resources:
       RouteTableId: !Ref 'PublicRouteTable'
       DestinationCidrBlock: '0.0.0.0/0'
       GatewayId: !Ref 'InternetGateway'
-  PublicSubnetOneRouteTableAssociation:
+  PublicSubnetA1PublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnetOne
+      SubnetId: !Ref PublicSubnetA1
       RouteTableId: !Ref PublicRouteTable
-  PublicSubnetTwoRouteTableAssociation:
+  PublicSubnetB1PublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnetTwo
+      SubnetId: !Ref PublicSubnetB1
       RouteTableId: !Ref PublicRouteTable
 
   # A security group for the containers we will run in Fargate.
@@ -205,7 +205,7 @@ Resources:
       Description: Ingress from the public ALB
       GroupId: !Ref 'FargateContainerSecurityGroup'
       IpProtocol: -1
-      SourceSecurityGroupId: !Ref 'PublicLoadBalancerSG'
+      SourceSecurityGroupId: !Ref 'PublicLoadBalancerSecurityGroup'
   EcsSecurityGroupIngressFromSelf:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -214,7 +214,7 @@ Resources:
       IpProtocol: -1
       SourceSecurityGroupId: !Ref 'FargateContainerSecurityGroup'
 
-  PublicLoadBalancerSG:
+  PublicLoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Access to the public facing load balancer
@@ -234,9 +234,9 @@ Resources:
       Subnets:
         # The load balancer is placed into the public subnets, so that traffic
         # from the internet can reach the load balancer directly via the internet gateway
-        - !Ref PublicSubnetOne
-        - !Ref PublicSubnetTwo
-      SecurityGroups: [!Ref 'PublicLoadBalancerSG']
+        - !Ref 'PublicSubnetA1'
+        - !Ref 'PublicSubnetB1'
+      SecurityGroups: [!Ref 'PublicLoadBalancerSecurityGroup']
   DummyTargetGroupPublic:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
