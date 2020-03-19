@@ -2,7 +2,10 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Description: Template to create a Fargate instance
 
-# Based on https://github.com/awslabs/aws-cloudformation-templates/tree/master/aws/services/ECS
+# Based on the 'Fully Public Container' deployment from:
+# https://github.com/awslabs/aws-cloudformation-templates/tree/master/aws/services/ECS#fully-public-container
+#
+# Merges the 'public-vpc.yml' and 'public-service.yml'.
 
 Parameters:
 
