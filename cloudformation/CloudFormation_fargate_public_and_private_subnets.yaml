@@ -113,11 +113,10 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           SecurityGroups:
-            - !Ref 'InstanceSecurityGroup'
             - !Ref 'FargateContainerSecurityGroup'
           Subnets:
-            - !Ref 'PublicSubnetA1'
-            - !Ref 'PublicSubnetB1'
+            - !Ref 'PrivateSubnetA'
+            - !Ref 'PrivateSubnetB'
       TaskDefinition: !Ref 'TaskDefinition'
       LoadBalancers:
         - ContainerName: !Ref 'ServiceName'
@@ -131,7 +130,7 @@ Resources:
       EnableDnsHostnames: true
       CidrBlock: '10.0.0.0/16'
 
-  PublicSubnetA1:
+  PublicSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -141,7 +140,7 @@ Resources:
       VpcId: !Ref 'VPC'
       CidrBlock: '10.0.0.0/24'
       MapPublicIpOnLaunch: true
-  PublicSubnetB1:
+  PublicSubnetB:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone:
@@ -149,8 +148,27 @@ Resources:
           - 1
           - Fn::GetAZs: {Ref: 'AWS::Region'}
       VpcId: !Ref 'VPC'
-      CidrBlock: '10.0.1.0/24'
+      CidrBlock: '10.0.100.0/24'
       MapPublicIpOnLaunch: true
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: '10.0.50.0/24'
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: '10.0.150.0/24'
 
   # Setup networking resources for the public subnets. Containers
   # in the public subnets have public IP addresses and the routing table
@@ -164,6 +182,7 @@ Resources:
     Properties:
       VpcId: !Ref 'VPC'
       InternetGatewayId: !Ref 'InternetGateway'
+
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -175,16 +194,74 @@ Resources:
       RouteTableId: !Ref 'PublicRouteTable'
       DestinationCidrBlock: '0.0.0.0/0'
       GatewayId: !Ref 'InternetGateway'
-  PublicSubnetA1PublicRouteTableAssociation:
+  PublicSubnetAPublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnetA1
+      SubnetId: !Ref PublicSubnetA
       RouteTableId: !Ref PublicRouteTable
-  PublicSubnetB1PublicRouteTableAssociation:
+  PublicSubnetBPublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref PublicSubnetB1
+      SubnetId: !Ref PublicSubnetB
       RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+  PrivateRouteA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayOne
+  PrivateRouteTableAAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableA
+      SubnetId: !Ref PrivateSubnetA
+  #
+  PrivateRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+  PrivateRouteB:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayTwo
+  PrivateRouteTableBAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableB
+      SubnetId: !Ref PrivateSubnetB
+
+  # Setup networking resources for the private subnets. Containers
+  # in these subnets have only private IP addresses, and must use a NAT
+  # gateway to talk to the internet. We launch two NAT gateways, one for
+  # each private subnet.
+  NatGatewayOne:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayAAttachment.AllocationId
+      SubnetId: !Ref PublicSubnetA
+  NatGatewayAAttachment:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachement
+    Properties:
+      Domain: vpc
+  NatGatewayTwo:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayBAttachment.AllocationId
+      SubnetId: !Ref PublicSubnetB
+  NatGatewayBAttachment:
+    Type: AWS::EC2::EIP
+    DependsOn: GatewayAttachement
+    Properties:
+      Domain: vpc
+
 
   # A security group for the containers we will run in Fargate.
   # Two rules, allowing network traffic from a public facing load
@@ -234,8 +311,8 @@ Resources:
       Subnets:
         # The load balancer is placed into the public subnets, so that traffic
         # from the internet can reach the load balancer directly via the internet gateway
-        - !Ref 'PublicSubnetA1'
-        - !Ref 'PublicSubnetB1'
+        - !Ref 'PublicSubnetA'
+        - !Ref 'PublicSubnetB'
       SecurityGroups: [!Ref 'PublicLoadBalancerSecurityGroup']
   DummyTargetGroupPublic:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -294,7 +371,6 @@ Resources:
           Values: [!Ref 'Path']
       ListenerArn: !Ref 'PublicLoadBalancerListener'
       Priority: !Ref 'Priority'
-
 
 
   # This is a role which is used by the ECS tasks themselves.
@@ -371,24 +447,7 @@ Resources:
                   - 'logs:PutLogEvents'
                 Resource: '*'
 
-  InstanceSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Enable TCP access on port 8080
-      VpcId: !Ref 'VPC'
-      SecurityGroupIngress:
-        IpProtocol: tcp
-        FromPort: 8080
-        ToPort: 8080
-        CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: My CF Fargate Security Group
-
 Outputs:
-  InstanceSecurityGroupId:
-    Description: Security Group Id
-    Value: !Ref InstanceSecurityGroup
   LoadBalancerUrl:
     Description: Public Load Balancer's URL
     Value: !GetAtt PublicLoadBalancer.DNSName
