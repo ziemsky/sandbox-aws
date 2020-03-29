@@ -111,7 +111,7 @@ Resources:
       DesiredCount: 2
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
+#          AssignPublicIp: ENABLED
           SecurityGroups:
             - !Ref 'FargateContainerSecurityGroup'
           Subnets:
