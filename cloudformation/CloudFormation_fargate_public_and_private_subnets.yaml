@@ -1,6 +1,8 @@
 AWSTemplateFormatVersion: 2010-09-09
 
-Description: Template to create a Fargate instance
+Description: >
+  Template to create a Fargate instances: two public, two private, in two subnets across two availability zones,
+  with public instances accessible via Load Balancer.
 
 # Based on the 'Fully Public Container' deployment from:
 # https://github.com/awslabs/aws-cloudformation-templates/tree/master/aws/services/ECS#fully-public-container

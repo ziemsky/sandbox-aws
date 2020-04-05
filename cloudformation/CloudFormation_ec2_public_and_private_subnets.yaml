@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+  Two EC2 instances instances in two, separate subnets:
+  publicly available 'bastion' and a private 'target' instance, available
+  via ssh only through the bastion one.
+
+  Note that InternetGateway with the PublicRoute are required,
+  so that return packets can be routed back to the SSH connection
+  initiator (route tables are stateless, and so the 'return' routes have
+  to be explicitly defined to let 'response' packets go out back to the initiator.
+
+Resources:
+
+  BastionHost:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: 't2.micro'
+      ImageId: 'ami-0cb790308f7591fa6'
+      KeyName: 'ZiemskyAwsTest'
+      SecurityGroupIds:
+        - !Ref BastionAccessSecurityGroup
+      SubnetId: !Ref PublicSubnet
+#      NetworkInterfaces:
+#        - DeviceIndex: 0
+#          SubnetId: !Ref PublicSubnet
+#          AssociatePublicIpAddress: true
+#          DeleteOnTermination: true
+  TargetHost:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: 't2.micro'
+      ImageId: 'ami-0cb790308f7591fa6'
+      KeyName: 'ZiemskyAwsTest'
+      SecurityGroupIds:
+        - !Ref TargetHostAccessSecurityGroup
+      SubnetId: !Ref PrivateSubnet
+#      NetworkInterfaces:
+#        - DeviceIndex: 0
+#          SubnetId: !Ref PrivateSubnet
+#          DeleteOnTermination: true
+
+  BastionAccessSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22 from th internet
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+
+  TargetHostAccessSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22 from the public subnet
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          SourceSecurityGroupId: !Ref BastionAccessSecurityGroup
+
+  ServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/ecs/cf-ec2"
+      RetentionInDays: 3
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: '10.0.0.0/16'
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: '10.0.10.0/24'
+      MapPublicIpOnLaunch: true
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: '10.0.20.0/24'
+      MapPublicIpOnLaunch: false
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  GatewayAttachement:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref 'VPC'
+      InternetGatewayId: !Ref 'InternetGateway'
+  VpcRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref 'VPC'
+  PublicRoute: # this, together with the InternetGateway was required for SSH to bastion to work
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachement
+    Properties:
+      RouteTableId: !Ref VpcRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref 'InternetGateway'
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref VpcRouteTable
+
+Outputs:
+  BastionDnsName:
+    Description: Public DNSName of the newly created EC2 instance
+    Value: !GetAtt BastionHost.PublicDnsName
+  BastionIp:
+    Description: Public IP address of the newly created EC2 instance
+    Value: !GetAtt BastionHost.PublicIp
