@@ -1,0 +1,29 @@
+aws --profile=ziemsky \
+cloudformation \
+validate-template \
+--template-body 'file:///home/ziemsky/dev/aws/ecs/cloudformation/CloudFormation_ec2_public_and_private_subnets.yaml'
+
+aws --profile=ziemsky \
+cloudformation \
+create-stack \
+--stack-name 'cf-ec2' \
+--capabilities CAPABILITY_IAM \
+--template-body 'file:///home/ziemsky/dev/aws/ecs/cloudformation/CloudFormation_ec2_public_and_private_subnets.yaml'
+
+aws --profile=ziemsky \
+cloudformation \
+describe-stacks \
+--stack-name 'cf-ec2' \
+--query Stacks[0].Outputs \
+| jq
+
+aws --profile=ziemsky \
+cloudformation \
+delete-stack \
+--stack-name 'cf-ec2'
+
+ssh -i ~/.ssh/<private-key-file>.pem  -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -vvv  ec2-user@35.178.1
+69.226
+
+scp -i ~/.ssh/<private-key-file>.pem  -o PreferredAuthentications=publickey -o IdentitiesOnly=yes -vvv ~/.ssh/ZiemskyAwsT
+est.pem ec2-user@35.178.169.226:~/.ssh/
